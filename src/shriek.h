@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <fstream>
 
 #include <ctype.h>
 
@@ -40,6 +41,21 @@ inline const bool isValidId(const int id)
   return id > 0;
 }
 
+const bool isValidCommand(const char *command)
+{
+  const char *p = command;
+  if (!p || !*p)
+    return false;
+  while (isspace(*p))
+    ++p;
+  if (!*p)
+    return false;
+  for (p = command; *p; ++p)
+    if (*p == '\n')
+      return false;
+  return true;
+}
+
 std::vector<std::string> getAllFilesInPath(const std::string &path)
 {
   std::vector<std::string> files;
@@ -49,16 +65,17 @@ std::vector<std::string> getAllFilesInPath(const std::string &path)
   return files;
 }
 
-std::string getOneFileInPath(const std::string &path, const std::string &fileName)
+std::string getOneFileContentFromPath(const std::string &path, const std::string &fileName)
 {
-  for (const auto &entry : fs::directory_iterator(path))
-    if (entry.is_regular_file())
-    {
-      const auto &filePath = entry.path();
-      if (filePath.filename().string() == fileName)
-        return filePath.string();
-    }
-  return {}; // Return empty string if no file found
+  std::string filePath = path + "/" + fileName;
+  std::ifstream file(filePath);
+  if (!file.is_open())
+    return "";
+  std::string content, line;
+  while (std::getline(file, line))
+    content += line + "\n";
+  file.close();
+  return content;
 }
 
 #endif // SHRIEK_H

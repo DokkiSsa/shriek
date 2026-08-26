@@ -285,9 +285,7 @@ int main(int argc, char *argv[])
   std::string configPath = getConfigPath();
   switch (command)
   {
-
   case COM::SUBSCRIBE:
-    // Handle subscribe command
     if (argc < 2)
     {
       std::cerr << "Error: subscribe command requires a topic and a command." << std::endl;
@@ -296,7 +294,6 @@ int main(int argc, char *argv[])
     return subscribe(configPath, argv[0], argv[1]);
     break;
   case COM::UNSUBSCRIBE:
-    // Handle unsubscribe command
     if (argc < 2)
     {
       std::cerr << "Error: unsubscribe command requires a topic and an ID." << std::endl;
@@ -305,7 +302,6 @@ int main(int argc, char *argv[])
     return unsubscribe(configPath, argv[0], std::stoi(argv[1]));
     break;
   case COM::UPDATE:
-    // Handle update command
     if (argc < 3)
     {
       std::cerr << "Error: update command requires a topic, an ID, and a new command." << std::endl;
@@ -314,7 +310,6 @@ int main(int argc, char *argv[])
     return update(configPath, argv[0], std::stoi(argv[1]), argv[2]);
     break;
   case COM::EMIT:
-    // Handle emit command
     if (argc < 2)
     {
       std::cerr << "Error: emit command requires a topic and a message." << std::endl;

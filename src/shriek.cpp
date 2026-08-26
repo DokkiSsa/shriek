@@ -81,6 +81,11 @@ int main(int argc, char *argv[], char *envp[])
   std::cout << "Shriek! " << VERSION << std::endl;
   argc--;
   argv++; // skip the program name
+  if (argc < 1)
+  {
+    print_help();
+    return 1;
+  }
   const COM command = findCommand(argv[0]);
   switch (command)
   {

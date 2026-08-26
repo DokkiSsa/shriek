@@ -2,8 +2,11 @@
 #include <cstring>
 #include <cstdlib>
 #include <sstream>
+#include <filesystem>
 
 #include "shriek.h"
+
+namespace fs = std::filesystem;
 
 #ifndef VERSION
 #define VERSION "1.0.0"
@@ -97,12 +100,45 @@ void print_help()
 void print_errors(const errorList &errors)
 {
   for (const std::string &error : errors)
-    std::cout << error;
-  std::cout << std::endl;
+    std::cerr << error;
+  std::cerr << std::endl;
 }
 
 int subscribe(std::string configPath, const char *topic, const char *command)
 {
+  errorList errors;
+  if (!isValidTopicName(topic) || !isValidCommand(command))
+  {
+    errors.push_back("[Error]: Invalid topic name or command.\n");
+    print_errors(errors);
+    return 1;
+  }
+  std::string topicFilePath = configPath + "/" + topic;
+  if (!fs::exists(topicFilePath) && !createFile(topicFilePath))
+  {
+    errors.push_back("[Error]: Could not create file: " + topicFilePath + "\n");
+    print_errors(errors);
+    return 1;
+  }
+  Topic *topicObj = parseTopicFromFile(configPath, topic, errors);
+  if (!topic)
+  {
+    print_errors(errors);
+    return 1;
+  }
+  int newId = 1;
+  for (const auto &sub : topicObj->subs)
+    if (newId > sub.id)
+      newId = sub.id + 1;
+
+  topicObj->subs.push_back({newId, command});
+  if (!writeTopicFile(topicFilePath, topicObj))
+  {
+    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to write .\n");
+    print_errors(errors);
+    return 1;
+  }
+  return 0;
 }
 
 int unsubscribe(std::string configPath, const char *topic, int id)
@@ -124,7 +160,7 @@ int list(const std::string configPath, const char *topic)
     if (!isValidTopicName(topic))
       return 1;
     const std::string subscriptions = getOneFileContentFromPath(configPath, topic);
-    if (subscriptions.empty())
+    if (subscriptions.empty() || subscriptions == COULD_NOT_OPEN_FILE)
       return 1;
     std::cout << "Subscriptions for " << topic << ": \n"
               << subscriptions << std::endl;
@@ -148,7 +184,7 @@ int validate(std::string configPath)
   for (const std::string &file : files)
   {
     errors.clear();
-    const Topic *topic = parseTopicFromFile(configPath, file, errors);
+    parseTopicFromFile(configPath, file, errors);
     if (errors.size())
     {
       errored = true;

@@ -32,22 +32,14 @@ std::string getConfigPath()
 {
   char *path;
   std::string fullpath = "";
-  if ((path = std::getenv("XDG_CONFIG_HOME")))
-  {
+  if (path = std::getenv("XDG_CONFIG_HOME"))
     fullpath = std::string(path) + "/shriek";
-  }
-  if ((path = std::getenv("HOME")))
-  {
+  else if (path = std::getenv("HOME"))
     fullpath = std::string(path) + "/.config/shriek";
-  }
   if (fullpath.empty())
-  {
     throw std::runtime_error("Neither XDG_CONFIG_HOME nor HOME environment variables are set.");
-  }
   if (!fs::is_directory(fullpath))
-  {
     fs::create_directory(fullpath);
-  }
   return fullpath;
 }
 
@@ -55,42 +47,28 @@ COM findCommand(const char *command)
 {
   if (strcmp(command, "subscribe") == 0 ||
       strcmp(command, "when") == 0)
-  {
     return COM::SUBSCRIBE;
-  }
   else if (strcmp(command, "unsubscribe") == 0 ||
            strcmp(command, "hush") == 0)
-  {
     return COM::UNSUBSCRIBE;
-  }
   else if (strcmp(command, "update") == 0 ||
            strcmp(command, "retune") == 0)
-  {
     return COM::UPDATE;
-  }
   else if (strcmp(command, "emit") == 0 ||
            strcmp(command, "at") == 0 ||
            strcmp(command, "about") == 0)
-  {
     return COM::EMIT;
-  }
   else if (strcmp(command, "list") == 0 ||
            strcmp(command, "topics") == 0 ||
            strcmp(command, "victims") == 0)
-  {
     return COM::LIST;
-  }
   else if (strcmp(command, "validate") == 0 ||
            strcmp(command, "clear-throat") == 0 ||
            strcmp(command, "soundcheck") == 0 ||
            strcmp(command, "mictesting123") == 0)
-  {
     return COM::VALIDATE;
-  }
   else
-  {
     return COM::HELP;
-  }
 }
 
 void print_help()
@@ -438,7 +416,6 @@ int main(int argc, char *argv[])
   case COM::VALIDATE:
     return validate(configPath);
     break;
-
   default:
     print_help();
     break;

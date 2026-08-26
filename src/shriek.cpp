@@ -1,17 +1,10 @@
 #include <iostream>
 
-struct Sub {
-  char id[4];
-  char *command;
-};
+#include "shriek.h"
 
-struct Topic {
-  char name[32];
-  Sub *subs;
-};
 
 int main(int argc, char* argv[]) {
-    std::cout << "Shriek!" << std::endl;
+    std::cout << "Shriek! " << VERSION << std::endl;
     return 0;
 }
 

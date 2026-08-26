@@ -71,9 +71,9 @@ const std::vector<std::string> getAllFilesInPath(const std::string &path)
   return files;
 }
 
-const std::string readFile(const std::string &path, const std::string &fileName)
+const std::string readFile(const std::string &filePath)
 {
-  std::ifstream file(path + "/" + fileName);
+  std::ifstream file(filePath);
   if (!file.is_open())
     return COULD_NOT_OPEN_FILE;
   std::string content = "", line;
@@ -106,6 +106,11 @@ bool writeTopicFile(std::string filePath, const Topic *topic)
   }
   file.close();
   return true;
+}
+
+bool deleteFile(std::string filePath)
+{
+  return std::filesystem::remove(filePath);
 }
 
 // ---------------------------
@@ -150,7 +155,7 @@ Topic *parseTopicFromFile(const std::string &path, const std::string &fileName, 
 {
   Topic *topic = new Topic();
   topic->name = fileName;
-  const std::string subscriptions = readFile(path, fileName);
+  const std::string subscriptions = readFile(path + "/" + fileName);
   if (!subscriptions.empty())
   {
     if (subscriptions == COULD_NOT_OPEN_FILE)

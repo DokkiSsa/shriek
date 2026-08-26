@@ -105,7 +105,7 @@ void print_help()
   std::cout << "Silly Usage: " << VERSION << "\n"
             << "  shriek when TOPIC COMMAND\n"
             << "  shriek hush TOPIC ID\n"
-            << "  shriek tune TOPIC ID COMMAND\n"
+            << "  shriek retune TOPIC ID COMMAND\n"
             << "  shriek at/about TOPIC [MESSAGE]\n"
             << "  shriek topics/victims [TOPIC]\n"
             << "  shriek clear-throat/soundcheck/mictesting123\n"
@@ -152,6 +152,7 @@ int spawnCommand(const std::string &command, const std::vector<std::string> &env
   if (pid > 0)
   {
     waitpid(pid, nullptr, 0);
+    std::cout << "finished waiting 1. returning" << std::endl;
     return 0;
   }
   setsid();
@@ -159,8 +160,10 @@ int spawnCommand(const std::string &command, const std::vector<std::string> &env
   if (pid2 < 0)
     _exit(1);
   if (pid2 > 0)
+  {
+    std::cout << "finished waiting 2. returning" << std::endl;
     _exit(0);
-
+  }
   // Second child (fully detached daemon process)
   // Change working directory if needed, close standard file descriptors, etc.
   if (chdir("/") != 0)
@@ -173,7 +176,7 @@ int spawnCommand(const std::string &command, const std::vector<std::string> &env
   char *const argv[] = {
       const_cast<char *>("sh"),
       const_cast<char *>("-c"),
-      const_cast<char *>("export SHRIEK_DEPTH;"),
+      // const_cast<char *>("export SHRIEK_DEPTH;"),
       const_cast<char *>(command.c_str()),
       nullptr};
   execve("/bin/sh", argv, envp.data());
@@ -198,7 +201,7 @@ int subscribe(std::string configPath, const char *topic, const char *command)
   bool existing = false;
   for (const auto &sub : topicObj->subs)
   {
-    if (newId > sub.id)
+    if (newId <= sub.id)
       newId = sub.id + 1;
     if (sub.command == command)
     {
@@ -247,10 +250,14 @@ int unsubscribe(std::string configPath, const char *topic, int id)
       deleteCheck = false;
       break;
     }
-
   if (deleteCheck)
   {
-    deleteFile(topicFilePath);
+    if (!deleteFile(topicFilePath))
+    {
+      errors.push_back("[Error]: Could not delete file (" + topicFilePath + ") to unsubscribe.");
+      print_errors(errors);
+      return 1;
+    }
   }
   else if (!writeTopicFile(topicFilePath, topicObj))
   {
@@ -274,12 +281,22 @@ int update(std::string configPath, const char *topic, int id, const char *comman
     return 1;
   }
   std::string topicFilePath = configPath + "/" + topic;
+  bool found = false;
   for (auto &sub : topicObj->subs)
     if (sub.id == id)
     {
+      found = true;
       sub.command = command;
       break;
     }
+  if (!found)
+  {
+    errors.push_back("[Error]: Could not find command with id:" + std::to_string(id) + " in (" + topicFilePath + ") to update.");
+    print_errors(errors);
+    if (!topicObj->subs.size())
+      deleteFile(topicFilePath);
+    return 1;
+  }
   if (!writeTopicFile(topicFilePath, topicObj))
   {
     errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to update.");
@@ -296,7 +313,10 @@ int emit(std::string configPath, const char *topic, const char *message)
   if (!(topicObj = getUserTopic(configPath, topic)))
     return 1;
   const std::string topicFilePath = configPath + "/" + topic;
-  const int depth = std::stoi(std::getenv("SHRIEK_DEPTH")) + 1;
+  const char *depthenv = std::getenv("SHRIEK_DEPTH");
+  if (!depthenv)
+    depthenv = "0";
+  const int depth = std::stoi(depthenv) + 1;
   for (const auto &sub : topicObj->subs)
   {
     std::vector<std::string> envs = {

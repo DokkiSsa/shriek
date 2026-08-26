@@ -37,7 +37,7 @@ inline bool isValidId(const int id)
   return id > 0;
 }
 
- bool isValidCommand(const char *command)
+bool isValidCommand(const char *command)
 {
   const char *p = command;
   if (!p || !*p || !isgraph(*p))
@@ -48,7 +48,7 @@ inline bool isValidId(const int id)
   return true;
 }
 
- bool isValidTopicName(const char *str)
+bool isValidTopicName(const char *str)
 {
   int length = 1;
   if (!str || !*str || !isalpha(*str))
@@ -141,7 +141,7 @@ std::vector<Sub> parseSubscriptions(const std::string &subscriptions, errorList 
     sub = parseOneSubscription(line);
     if (!sub)
     {
-      errors.push_back("[Error]: Invalid subscription: (line:" + std::to_string(lineNumber) + ") " + line + "\n");
+      errors.push_back("[Error]: Invalid subscription: (line:" + std::to_string(lineNumber) + ") " + line);
       continue;
     }
     subs.emplace_back(*sub);
@@ -160,14 +160,14 @@ Topic *parseTopicFromFile(const std::string &path, const std::string &fileName, 
   {
     if (subscriptions == COULD_NOT_OPEN_FILE)
     {
-      errors.push_back("[Error]:" + fileName + " could not be opened.\n");
+      errors.push_back("[Error]:" + fileName + " could not be opened.");
       delete topic;
       return nullptr;
     }
     topic->subs = parseSubscriptions(subscriptions, errors);
     if (topic->subs.empty())
     {
-      errors.insert(errors.begin(), "[Error]:" + fileName + " has 1 or more invalid subscriptions.\n");
+      errors.insert(errors.begin(), "[Error]:" + fileName + " has 1 or more invalid subscriptions.");
       delete topic;
       return nullptr;
     }

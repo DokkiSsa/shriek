@@ -32,12 +32,12 @@ struct Topic
 // ---------------------------
 // validation funcs-----------
 
-inline const bool isValidId(const int id)
+inline bool isValidId(const int id)
 {
   return id > 0;
 }
 
-const bool isValidCommand(const char *command)
+ bool isValidCommand(const char *command)
 {
   const char *p = command;
   if (!p || !*p || !isgraph(*p))
@@ -48,7 +48,7 @@ const bool isValidCommand(const char *command)
   return true;
 }
 
-const bool isValidTopicName(const char *str)
+ bool isValidTopicName(const char *str)
 {
   int length = 1;
   if (!str || !*str || !isalpha(*str))

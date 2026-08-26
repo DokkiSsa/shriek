@@ -4,7 +4,7 @@
 #include <sstream>
 #include <filesystem>
 
-#include "shriek.h"
+#include "shriek.hpp"
 
 namespace fs = std::filesystem;
 
@@ -26,15 +26,27 @@ enum class COM
 std::string getConfigPath()
 {
   char *path;
-  if ((path = std::getenv("XDG_CONFIG_HOME")) ||
-      (path = std::getenv("HOME")))
+  std::string fullpath = "";
+  if ((path = std::getenv("XDG_CONFIG_HOME")))
   {
-    return std::string(path) + "/shriek";
+    fullpath = std::string(path) + "/shriek";
   }
-  throw std::runtime_error("Neither XDG_CONFIG_HOME nor HOME environment variables are set.");
+  if ((path = std::getenv("HOME")))
+  {
+    fullpath = std::string(path) + "/.config/shriek";
+  }
+  if (fullpath.empty())
+  {
+    throw std::runtime_error("Neither XDG_CONFIG_HOME nor HOME environment variables are set.");
+  }
+  if (!fs::is_directory(fullpath))
+  {
+    fs::create_directory(fullpath);
+  }
+  return fullpath;
 }
 
-const COM findCommand(const char *command)
+COM findCommand(const char *command)
 {
   if (strcmp(command, "subscribe") == 0 ||
       strcmp(command, "when") == 0)
@@ -227,6 +239,7 @@ int update(std::string configPath, const char *topic, int id, const char *comman
 
 int emit(std::string configPath, const char *topic, const char *message)
 {
+  return 1;
 }
 
 int list(const std::string configPath, const char *topic)
@@ -244,10 +257,13 @@ int list(const std::string configPath, const char *topic)
   else
   {
     const std::vector<std::string> files = getAllFilesInPath(configPath);
-    std::cout << "All topics: \n";
-    for (const std::string &file : files)
-      std::cout << file << "\n";
-    std::cout << std::endl;
+    if (files.size())
+    {
+      std::cout << "All topics: \n";
+      for (const std::string &file : files)
+        std::cout << file << "\n";
+      std::cout << std::endl;
+    }
   }
   return 0;
 }

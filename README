@@ -1,3 +1,97 @@
-# Shriek - yell at your shell 
+# Shriek - yell at your shell
 
 emit events and invoke subscribed shell commands
+
+## About
+
+`shriek` is a simple pub/sub event bus, with minimal features of subscribing and emitting.
+
+shell commands can subscribe to topics and later emit an event to a topic with an optional text message.
+
+## Usage
+
+These are the available commands:
+
+```shell
+shriek subscribe TOPIC COMMAND
+shriek unsubscribe TOPIC ID
+shriek update TOPIC ID COMMAND
+shriek emit TOPIC [MESSAGE]
+shriek list [TOPIC]
+shriek validate
+shriek --help
+```
+
+## FORMAT
+
+`TOPIC` follows the pattern `\w{1,30}`. if it is empty, or does not match any available topics, it will be a no-op, except in `list` command.
+
+`COMMAND` is an arbitrary length shell command. user is responsible for ensuring correctness, quoting and escaping it. cannot be empty.
+
+`ID` is auto-generated identifier for each `COMMAND`. it is an int written as hex in topic file. 
+
+`MESSAGE` is an arbitrary length string that is passed to subscribers. if it is an empty string, it will be ignored.
+
+## Commands
+
+### `subscribe`
+
+Creates a subscription to `TOPIC` with `COMMAND` shell command. it generates a TOPIC file if it does not exist yet.
+
+### `unsubscribe`
+
+removes the record identified by `ID` from `TOPIC`. A missing topic or ID is an error. Removing the last subscription deletes the topic file.
+
+### `update`
+
+updates the record command identified by `ID` from `TOPIC`. A missing topic or ID is an error. it keeps the same `ID`.
+
+### `emit`
+
+`emit` triggers the topic to run its subscribers
+
+`MESSAGE` is the optional text message that is sent to each of its subscribers. it is set as an environment variable `SHRIEK_MESSAGE`.
+
+### `list`
+
+it lists the topics available. if a `TOPIC` param is given, it list the subscribers to that topic
+
+### `validate`
+
+checks all the topic files validity, and reports broken file.
+
+## Config
+
+config and topic files are stored at `$XDG_CONFIG_HOME/shriek` or `$HOME/.config/shriek`. 
+
+there is no config file as of now, as there isnt anything to config for now.
+
+an invalid line in a topic will invalidate the entire topic and not run a single subscriber until the broken subscriber is fixed. could change later. for now this seems the least effort cost way to handle it
+
+## Subscriber data
+
+subscribers commands have these data available in their environment:
+
+```text
+SHRIEK_TOPIC             emitted topic
+SHRIEK_MESSAGE           message, possibly empty
+SHRIEK_SUB_ID            subscription command ID
+SHRIEK_DEPTH             recursive emission depth
+```
+
+`SHRIEK_DEPTH` is used to prevent recursive subscriber calls from its own subscribers.
+An unset or malformed incoming `SHRIEK_DEPTH` is counted as zero. 
+emit increments it for subscribers and refuses recursion beyond depth 16. 
+This protects against accidental loops, not hostile code, that actively changes it to get more depth. so its just a basic failsafe, not an absolute recursion protection mechanism. dont tell i didnt warn you incase this happens :P
+
+any other custom env variables set while calling `shriek` are passed along to its subscribers. make sure to always re-export `SHRIEK_DEPTH` in a script or command called by `shriek`, that again calls `shriek`.
+
+
+
+
+
+
+
+
+
+

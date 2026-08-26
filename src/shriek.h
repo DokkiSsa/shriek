@@ -11,6 +11,7 @@
 #define TOPIC_MAX 32
 
 namespace fs = std::filesystem;
+typedef std::vector<std::string> errorList;
 
 // ---------------------------
 // data structures------------
@@ -82,6 +83,9 @@ const std::string getOneFileContentFromPath(const std::string &path, const std::
   return content;
 }
 
+// ---------------------------
+// parse funcs----------------
+
 const Sub *parseOneSubscription(const std::string &subscription)
 {
   size_t idEnd = subscription.find('\t');
@@ -94,35 +98,42 @@ const Sub *parseOneSubscription(const std::string &subscription)
   return new Sub{id, command};
 }
 
-std::vector<Sub> parseSubscriptions(const std::string &subscriptions)
+std::vector<Sub> parseSubscriptions(const std::string &subscriptions, errorList &errors)
 {
   std::istringstream iss(subscriptions);
   std::string line;
   std::vector<Sub> subs;
   const Sub *sub = nullptr;
+  int lineNumber = 0;
   while (std::getline(iss, line))
   {
+    lineNumber++;
     sub = parseOneSubscription(line);
     if (!sub)
-    {
-      subs.clear();
-      return {}; // Invalid subscription
-    }
-    subs.push_back(*sub);
+      errors.push_back("[Error]: Invalid subscription: (line:" + std::to_string(lineNumber) + ") " + line + "\n");
+    subs.emplace_back(*sub);
   }
+  if (errors.size())
+    subs.clear();
   return subs;
 }
 
-const Topic *fetchTopicFromFile(const std::string &path, const std::string &fileName)
+const Topic *parseTopicFromFile(const std::string &path, const std::string &fileName, errorList &errors)
 {
   Topic *topic = new Topic();
   topic->name = fileName;
   const std::string subscriptions = getOneFileContentFromPath(path, fileName);
   if (subscriptions.empty())
+  {
+    errors.push_back("[Error]:" + fileName + " could not be validated or is empty.\n");
     return nullptr;
-  topic->subs = parseSubscriptions(subscriptions);
+  }
+  topic->subs = parseSubscriptions(subscriptions, errors);
   if (topic->subs.empty())
+  {
+    errors.insert(errors.begin(), "[Error]:" + fileName + " has 1 or more invalid subscriptions.\n");
     return nullptr;
+  }
   return topic;
 }
 

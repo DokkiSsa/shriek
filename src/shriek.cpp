@@ -188,6 +188,30 @@ int unsubscribe(std::string configPath, const char *topic, int id)
 
 int update(std::string configPath, const char *topic, int id, const char *command)
 {
+  errorList errors;
+  Topic *topicObj = nullptr;
+  if (!(topicObj = getUserTopic(configPath, topic)))
+    return 1;
+  if (!isValidCommand(command) || !isValidId(id))
+  {
+    errors.push_back("[Error]: Invalid id or command .\n");
+    print_errors(errors);
+    return 1;
+  }
+  std::string topicFilePath = configPath + "/" + topic;
+  for (auto &sub : topicObj->subs)
+    if (sub.id == id)
+    {
+      sub.command = command;
+      break;
+    }
+  if (!writeTopicFile(topicFilePath, topicObj))
+  {
+    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to update .\n");
+    print_errors(errors);
+    return 1;
+  }
+  return 0;
 }
 
 int emit(std::string configPath, const char *topic, const char *message)

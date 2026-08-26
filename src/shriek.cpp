@@ -1,8 +1,11 @@
 #include <iostream>
+#include <filesystem>
+#include <sstream>
 #include <cstring>
 #include <cstdlib>
-#include <sstream>
-#include <filesystem>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "shriek.hpp"
 
@@ -112,7 +115,7 @@ void print_help()
 void print_errors(const errorList &errors)
 {
   for (const std::string &error : errors)
-    std::cerr << error;
+    std::cerr << error << "\n";
   std::cerr << std::endl;
 }
 
@@ -121,14 +124,14 @@ Topic *getUserTopic(std::string configPath, const char *topic)
   errorList errors;
   if (!isValidTopicName(topic))
   {
-    errors.push_back("[Error]: Invalid topic name.\n");
+    errors.push_back("[Error]: Invalid topic name.");
     print_errors(errors);
     return nullptr;
   }
   const std::string topicFilePath = configPath + "/" + topic;
   if (!fs::exists(topicFilePath) && !createFile(topicFilePath))
   {
-    errors.push_back("[Error]: Could not create file: " + topicFilePath + "\n");
+    errors.push_back("[Error]: Could not create file: " + topicFilePath);
     print_errors(errors);
     return nullptr;
   }
@@ -141,6 +144,43 @@ Topic *getUserTopic(std::string configPath, const char *topic)
   return topicObj;
 }
 
+int spawnCommand(const std::string &command, const std::vector<std::string> &envVars)
+{
+  pid_t pid = fork();
+  if (pid < 0)
+    return 1;
+  if (pid > 0)
+  {
+    waitpid(pid, nullptr, 0);
+    return 0;
+  }
+  setsid();
+  pid_t pid2 = fork();
+  if (pid2 < 0)
+    _exit(1);
+  if (pid2 > 0)
+    _exit(0);
+
+  // Second child (fully detached daemon process)
+  // Change working directory if needed, close standard file descriptors, etc.
+  if (chdir("/") != 0)
+    _exit(1);
+  std::vector<char *> envp;
+  for (const auto &var : envVars)
+    envp.push_back(const_cast<char *>(var.c_str()));
+  envp.push_back(nullptr);
+
+  char *const argv[] = {
+      const_cast<char *>("sh"),
+      const_cast<char *>("-c"),
+      const_cast<char *>("export SHRIEK_DEPTH;"),
+      const_cast<char *>(command.c_str()),
+      nullptr};
+  execve("/bin/sh", argv, envp.data());
+
+  _exit(1);
+}
+
 int subscribe(std::string configPath, const char *topic, const char *command)
 {
   errorList errors;
@@ -149,23 +189,35 @@ int subscribe(std::string configPath, const char *topic, const char *command)
     return 1;
   if (!isValidCommand(command))
   {
-    errors.push_back("[Error]: Invalid command.\n");
+    errors.push_back("[Error]: Invalid command.");
     print_errors(errors);
     return 1;
   }
   const std::string topicFilePath = configPath + "/" + topic;
   int newId = 1;
+  bool existing = false;
   for (const auto &sub : topicObj->subs)
+  {
     if (newId > sub.id)
       newId = sub.id + 1;
-
-  topicObj->subs.push_back({newId, command});
-  if (!writeTopicFile(topicFilePath, topicObj))
-  {
-    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to subscribe .\n");
-    print_errors(errors);
-    return 1;
+    if (sub.command == command)
+    {
+      existing = true;
+      newId = sub.id;
+      break;
+    }
   }
+  if (!existing)
+  {
+    topicObj->subs.push_back({newId, command});
+    if (!writeTopicFile(topicFilePath, topicObj))
+    {
+      errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to subscribe.");
+      print_errors(errors);
+      return 1;
+    }
+  }
+  std::cout << newId << std::endl;
   return 0;
 }
 
@@ -177,7 +229,7 @@ int unsubscribe(std::string configPath, const char *topic, int id)
     return 1;
   if (!isValidId(id))
   {
-    errors.push_back("[Error]: Invalid id.\n");
+    errors.push_back("[Error]: Invalid id.");
     print_errors(errors);
     return 1;
   }
@@ -202,7 +254,7 @@ int unsubscribe(std::string configPath, const char *topic, int id)
   }
   else if (!writeTopicFile(topicFilePath, topicObj))
   {
-    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to unsubscribe .\n");
+    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to unsubscribe.");
     print_errors(errors);
     return 1;
   }
@@ -217,7 +269,7 @@ int update(std::string configPath, const char *topic, int id, const char *comman
     return 1;
   if (!isValidCommand(command) || !isValidId(id))
   {
-    errors.push_back("[Error]: Invalid id or command .\n");
+    errors.push_back("[Error]: Invalid id or command.");
     print_errors(errors);
     return 1;
   }
@@ -230,7 +282,7 @@ int update(std::string configPath, const char *topic, int id, const char *comman
     }
   if (!writeTopicFile(topicFilePath, topicObj))
   {
-    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to update .\n");
+    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to update.");
     print_errors(errors);
     return 1;
   }
@@ -239,7 +291,33 @@ int update(std::string configPath, const char *topic, int id, const char *comman
 
 int emit(std::string configPath, const char *topic, const char *message)
 {
-  return 1;
+  errorList errors;
+  Topic *topicObj = nullptr;
+  if (!(topicObj = getUserTopic(configPath, topic)))
+    return 1;
+  const std::string topicFilePath = configPath + "/" + topic;
+  bool failed = false;
+  const int depth = std::stoi(std::getenv("SHRIEK_DEPTH")) + 1;
+  for (const auto &sub : topicObj->subs)
+  {
+    std::vector<std::string> envs = {
+        std::string("SHRIEK_TOPIC=") + topic,
+        std::string("SHRIEK_MESSAGE=") + message,
+        std::string("SHRIEK_DEPTH=") + std::to_string(depth),
+        std::string("SHRIEK_SUB_ID=") + std::to_string(sub.id),
+    };
+    if (spawnCommand(sub.command, envs))
+    {
+      errors.push_back("[Error]: Could not execute command (id:" + std::to_string(sub.id) + ").");
+      failed = true;
+    }
+  }
+  if (errors.size())
+  {
+    print_errors(errors);
+    return 1;
+  }
+  return 0;
 }
 
 int list(const std::string configPath, const char *topic)
@@ -251,15 +329,13 @@ int list(const std::string configPath, const char *topic)
     const std::string subscriptions = readFile(configPath + "/" + topic);
     if (subscriptions.empty() || subscriptions == COULD_NOT_OPEN_FILE)
       return 1;
-    std::cout << "Subscriptions for " << topic << ": \n"
-              << subscriptions << std::endl;
+    std::cout << subscriptions << std::endl;
   }
   else
   {
     const std::vector<std::string> files = getAllFilesInPath(configPath);
     if (files.size())
     {
-      std::cout << "All topics: \n";
       for (const std::string &file : files)
         std::cout << file << "\n";
       std::cout << std::endl;
@@ -326,12 +402,12 @@ int main(int argc, char *argv[])
     return update(configPath, argv[0], std::stoi(argv[1]), argv[2]);
     break;
   case COM::EMIT:
-    if (argc < 2)
+    if (argc < 1)
     {
-      std::cerr << "Error: emit command requires a topic and a message." << std::endl;
+      std::cerr << "Error: emit command requires a topic and an optional message." << std::endl;
       return 1;
     }
-    return emit(configPath, argv[0], argv[1]);
+    return emit(configPath, argv[0], argc == 2 ? argv[1] : "");
     break;
   case COM::LIST:
     return list(configPath, argc ? argv[0] : nullptr);

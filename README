@@ -1,0 +1,3 @@
+# Shriek - yell at your shell 
+
+emit events and invoke subscribed shell commands

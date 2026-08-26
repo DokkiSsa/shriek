@@ -296,7 +296,6 @@ int emit(std::string configPath, const char *topic, const char *message)
   if (!(topicObj = getUserTopic(configPath, topic)))
     return 1;
   const std::string topicFilePath = configPath + "/" + topic;
-  bool failed = false;
   const int depth = std::stoi(std::getenv("SHRIEK_DEPTH")) + 1;
   for (const auto &sub : topicObj->subs)
   {
@@ -307,10 +306,7 @@ int emit(std::string configPath, const char *topic, const char *message)
         std::string("SHRIEK_SUB_ID=") + std::to_string(sub.id),
     };
     if (spawnCommand(sub.command, envs))
-    {
       errors.push_back("[Error]: Could not execute command (id:" + std::to_string(sub.id) + ").");
-      failed = true;
-    }
   }
   if (errors.size())
   {

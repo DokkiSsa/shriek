@@ -9,6 +9,7 @@
 #include <ctype.h>
 
 #define TOPIC_MAX 32
+#define COULD_NOT_OPEN_FILE "NOPE"
 
 namespace fs = std::filesystem;
 typedef std::vector<std::string> errorList;
@@ -62,7 +63,7 @@ const bool isValidTopicName(const char *str)
 // ---------------------------
 // file funcs-----------------
 
-std::vector<std::string> getAllFilesInPath(const std::string &path)
+const std::vector<std::string> getAllFilesInPath(const std::string &path)
 {
   std::vector<std::string> files;
   for (const auto &entry : fs::directory_iterator(path))
@@ -75,18 +76,30 @@ const std::string getOneFileContentFromPath(const std::string &path, const std::
 {
   std::ifstream file(path + "/" + fileName);
   if (!file.is_open())
-    return "";
-  std::string content, line;
+    return COULD_NOT_OPEN_FILE;
+  std::string content = "", line;
   while (std::getline(file, line))
     content += line + "\n";
   file.close();
   return content;
 }
 
+bool createFile(std::string filePath, errorList &errors)
+{
+  std::ofstream file(filePath, std::ios::out);
+  if (!file.is_open())
+  {
+    errors.push_back("[Error]: Could not create file: " + filePath + "\n");
+    return false;
+  }
+  file.close();
+  return true;
+}
+
 // ---------------------------
 // parse funcs----------------
 
-const Sub *parseOneSubscription(const std::string &subscription)
+Sub *parseOneSubscription(const std::string &subscription)
 {
   size_t idEnd = subscription.find('\t');
   if (idEnd == std::string::npos)
@@ -110,7 +123,10 @@ std::vector<Sub> parseSubscriptions(const std::string &subscriptions, errorList 
     lineNumber++;
     sub = parseOneSubscription(line);
     if (!sub)
+    {
       errors.push_back("[Error]: Invalid subscription: (line:" + std::to_string(lineNumber) + ") " + line + "\n");
+      continue;
+    }
     subs.emplace_back(*sub);
   }
   if (errors.size())
@@ -118,21 +134,26 @@ std::vector<Sub> parseSubscriptions(const std::string &subscriptions, errorList 
   return subs;
 }
 
-const Topic *parseTopicFromFile(const std::string &path, const std::string &fileName, errorList &errors)
+Topic *parseTopicFromFile(const std::string &path, const std::string &fileName, errorList &errors)
 {
   Topic *topic = new Topic();
   topic->name = fileName;
   const std::string subscriptions = getOneFileContentFromPath(path, fileName);
-  if (subscriptions.empty())
+  if (!subscriptions.empty())
   {
-    errors.push_back("[Error]:" + fileName + " could not be validated or is empty.\n");
-    return nullptr;
-  }
-  topic->subs = parseSubscriptions(subscriptions, errors);
-  if (topic->subs.empty())
-  {
-    errors.insert(errors.begin(), "[Error]:" + fileName + " has 1 or more invalid subscriptions.\n");
-    return nullptr;
+    if (subscriptions == COULD_NOT_OPEN_FILE)
+    {
+      errors.push_back("[Error]:" + fileName + " could not be opened.\n");
+      delete topic;
+      return nullptr;
+    }
+    topic->subs = parseSubscriptions(subscriptions, errors);
+    if (topic->subs.empty())
+    {
+      errors.insert(errors.begin(), "[Error]:" + fileName + " has 1 or more invalid subscriptions.\n");
+      delete topic;
+      return nullptr;
+    }
   }
   return topic;
 }

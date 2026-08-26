@@ -94,6 +94,13 @@ void print_help()
             << "  shriek --help\n";
 }
 
+void print_errors(const errorList &errors)
+{
+  for (const std::string &error : errors)
+    std::cout << error;
+  std::cout << std::endl;
+}
+
 int subscribe(std::string configPath, const char *topic, const char *command)
 {
 }
@@ -127,10 +134,7 @@ int list(const std::string configPath, const char *topic)
     const std::vector<std::string> files = getAllFilesInPath(configPath);
     std::cout << "All topics: \n";
     for (const std::string &file : files)
-    {
-      const int idx = file.find_last_of('/');
-      std::cout << file.substr(idx + 1) << "\n";
-    }
+      std::cout << file << "\n";
     std::cout << std::endl;
   }
   return 0;
@@ -138,43 +142,20 @@ int list(const std::string configPath, const char *topic)
 
 int validate(std::string configPath)
 {
-  std::vector<std::string> errors;
   const std::vector<std::string> files = getAllFilesInPath(configPath);
+  errorList errors;
+  bool errored = false;
   for (const std::string &file : files)
   {
-    if (!isValidTopicName(file.c_str()))
+    errors.clear();
+    const Topic *topic = parseTopicFromFile(configPath, file, errors);
+    if (errors.size())
     {
-      errors.push_back("[Error]:" + file + " is not a valid topic name.\n");
-      continue;
-    }
-    const std::string subscription = getOneFileContentFromPath(configPath, file);
-    if (subscription.empty())
-    {
-      errors.push_back("[Error]:" + file + " could not be validated or is empty.\n");
-      continue;
-    }
-    std::istringstream iss(subscription);
-    std::string line;
-    int lineNumber = 0;
-    const Sub *sub = nullptr;
-    while (std::getline(iss, line))
-    {
-      sub = parseSubscription(line);
-      lineNumber++;
-      if (!sub)
-      {
-        errors.push_back("[Error]:" + file + " has an invalid subscription at line: " + std::to_string(lineNumber) + "\n");
-        continue;
-      }
-      delete[] sub->command;
-      delete sub;
+      errored = true;
+      print_errors(errors);
     }
   }
-  for (const std::string &error : errors)
-  {
-    std::cout << error;
-  }
-  return errors.empty() ? 0 : 1;
+  return errored;
 }
 
 int main(int argc, char *argv[])

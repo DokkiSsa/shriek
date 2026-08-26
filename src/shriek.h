@@ -12,18 +12,40 @@
 
 namespace fs = std::filesystem;
 
+// ---------------------------
+// data structures------------
+
 struct Sub
 {
   int id;
-  char *command;
+  std::string command;
 };
 
 struct Topic
 {
   // 31 characters for the topic name, plus a null terminator
-  char name[TOPIC_MAX];
-  Sub *subs;
+  std::string name;
+  std::vector<Sub> subs;
 };
+
+// ---------------------------
+// validation funcs-----------
+
+inline const bool isValidId(const int id)
+{
+  return id > 0;
+}
+
+const bool isValidCommand(const char *command)
+{
+  const char *p = command;
+  if (!p || !*p || !isgraph(*p))
+    return false;
+  for (p = command; *p; ++p)
+    if (*p == '\n')
+      return false;
+  return true;
+}
 
 const bool isValidTopicName(const char *str)
 {
@@ -36,25 +58,8 @@ const bool isValidTopicName(const char *str)
   return true;
 }
 
-inline const bool isValidId(const int id)
-{
-  return id > 0;
-}
-
-const bool isValidCommand(const char *command)
-{
-  const char *p = command;
-  if (!p || !*p)
-    return false;
-  while (isspace(*p))
-    ++p;
-  if (!*p)
-    return false;
-  for (p = command; *p; ++p)
-    if (*p == '\n')
-      return false;
-  return true;
-}
+// ---------------------------
+// file funcs-----------------
 
 std::vector<std::string> getAllFilesInPath(const std::string &path)
 {
@@ -65,10 +70,9 @@ std::vector<std::string> getAllFilesInPath(const std::string &path)
   return files;
 }
 
-std::string getOneFileContentFromPath(const std::string &path, const std::string &fileName)
+const std::string getOneFileContentFromPath(const std::string &path, const std::string &fileName)
 {
-  std::string filePath = path + "/" + fileName;
-  std::ifstream file(filePath);
+  std::ifstream file(path + "/" + fileName);
   if (!file.is_open())
     return "";
   std::string content, line;
@@ -78,46 +82,47 @@ std::string getOneFileContentFromPath(const std::string &path, const std::string
   return content;
 }
 
-const Sub *parseSubscription(const std::string &subscription)
+const Sub *parseOneSubscription(const std::string &subscription)
 {
   size_t idEnd = subscription.find('\t');
   if (idEnd == std::string::npos)
-    return nullptr; // Invalid format
-  Sub *sub = new Sub;
-  sub->id = std::stoi(subscription.substr(0, idEnd));
-  sub->command = new char[subscription.size() - idEnd];
-  std::strcpy(sub->command, subscription.substr(idEnd + 1).c_str());
-  if (!isValidId(sub->id) || !isValidCommand(sub->command))
-  {
-    delete[] sub->command;
-    delete sub;
-    return nullptr; // Invalid ID or command
-  }
-  return sub;
+    return nullptr;
+  int id = std::stoi(subscription.substr(0, idEnd));
+  std::string command = subscription.substr(idEnd + 1);
+  if (!isValidId(id) || !isValidCommand(command.c_str()))
+    return nullptr;
+  return new Sub{id, command};
 }
 
-const Topic * parseTopic(const std::string &topicName, const std::string &subscriptions)
+std::vector<Sub> parseSubscriptions(const std::string &subscriptions)
 {
-  if (!isValidTopicName(topicName.c_str()))
-    return nullptr; // Invalid topic name
-  Topic *topic = new Topic;
-  std::strncpy(topic->name, topicName.c_str(), TOPIC_MAX);
   std::istringstream iss(subscriptions);
   std::string line;
   std::vector<Sub> subs;
+  const Sub *sub = nullptr;
   while (std::getline(iss, line))
   {
-    const Sub *sub = parseSubscription(line);
+    sub = parseOneSubscription(line);
     if (!sub)
     {
-      delete topic;
-      return nullptr; // Invalid subscription
+      subs.clear();
+      return {}; // Invalid subscription
     }
     subs.push_back(*sub);
-    delete sub;
   }
-  topic->subs = new Sub[subs.size()];
-  std::copy(subs.begin(), subs.end(), topic->subs);
+  return subs;
+}
+
+const Topic *fetchTopicFromFile(const std::string &path, const std::string &fileName)
+{
+  Topic *topic = new Topic();
+  topic->name = fileName;
+  const std::string subscriptions = getOneFileContentFromPath(path, fileName);
+  if (subscriptions.empty())
+    return nullptr;
+  topic->subs = parseSubscriptions(subscriptions);
+  if (topic->subs.empty())
+    return nullptr;
   return topic;
 }
 

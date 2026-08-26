@@ -9,7 +9,7 @@
 #include <ctype.h>
 
 #define TOPIC_MAX 32
-#define COULD_NOT_OPEN_FILE "NOPE"
+#define COULD_NOT_OPEN_FILE "__NOPE__"
 
 namespace fs = std::filesystem;
 typedef std::vector<std::string> errorList;
@@ -25,7 +25,6 @@ struct Sub
 
 struct Topic
 {
-  // 31 characters for the topic name, plus a null terminator
   std::string name;
   std::vector<Sub> subs;
 };
@@ -84,14 +83,23 @@ const std::string getOneFileContentFromPath(const std::string &path, const std::
   return content;
 }
 
-bool createFile(std::string filePath, errorList &errors)
+bool createFile(std::string filePath)
 {
   std::ofstream file(filePath, std::ios::out);
   if (!file.is_open())
-  {
-    errors.push_back("[Error]: Could not create file: " + filePath + "\n");
     return false;
-  }
+  file.close();
+  return true;
+}
+
+bool writeTopicFile(std::string filePath, const Topic *topic)
+{
+  std::ofstream file(filePath, std::ios::out);
+  if (!file.is_open())
+    return false;
+  file.clear();
+  for (const auto &sub : topic->subs)
+    file << sub.id << "\t" << sub.command << "\n";
   file.close();
   return true;
 }

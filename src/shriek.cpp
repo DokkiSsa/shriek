@@ -104,28 +104,44 @@ void print_errors(const errorList &errors)
   std::cerr << std::endl;
 }
 
-int subscribe(std::string configPath, const char *topic, const char *command)
+Topic *getUserTopic(std::string configPath, const char *topic)
 {
   errorList errors;
-  if (!isValidTopicName(topic) || !isValidCommand(command))
+  if (!isValidTopicName(topic))
   {
-    errors.push_back("[Error]: Invalid topic name or command.\n");
+    errors.push_back("[Error]: Invalid topic name.\n");
     print_errors(errors);
-    return 1;
+    return nullptr;
   }
   std::string topicFilePath = configPath + "/" + topic;
   if (!fs::exists(topicFilePath) && !createFile(topicFilePath))
   {
     errors.push_back("[Error]: Could not create file: " + topicFilePath + "\n");
     print_errors(errors);
-    return 1;
+    return nullptr;
   }
   Topic *topicObj = parseTopicFromFile(configPath, topic, errors);
   if (!topic)
   {
     print_errors(errors);
+    return nullptr;
+  }
+  return topicObj;
+}
+
+int subscribe(std::string configPath, const char *topic, const char *command)
+{
+  errorList errors;
+  Topic *topicObj = nullptr;
+  if (!(topicObj = getUserTopic(configPath, topic)))
+    return 1;
+  if (!isValidCommand(command))
+  {
+    errors.push_back("[Error]: Invalid command.\n");
+    print_errors(errors);
     return 1;
   }
+  std::string topicFilePath = configPath + "/" + topic;
   int newId = 1;
   for (const auto &sub : topicObj->subs)
     if (newId > sub.id)
@@ -134,7 +150,7 @@ int subscribe(std::string configPath, const char *topic, const char *command)
   topicObj->subs.push_back({newId, command});
   if (!writeTopicFile(topicFilePath, topicObj))
   {
-    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to write .\n");
+    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to subscribe .\n");
     print_errors(errors);
     return 1;
   }
@@ -143,6 +159,31 @@ int subscribe(std::string configPath, const char *topic, const char *command)
 
 int unsubscribe(std::string configPath, const char *topic, int id)
 {
+  errorList errors;
+  Topic *topicObj = nullptr;
+  if (!(topicObj = getUserTopic(configPath, topic)))
+    return 1;
+  if (!isValidId(id))
+  {
+    errors.push_back("[Error]: Invalid id.\n");
+    print_errors(errors);
+    return 1;
+  }
+  std::string topicFilePath = configPath + "/" + topic;
+  for (auto &sub : topicObj->subs)
+    if (sub.id == id)
+    {
+      sub.id = -1;
+      break;
+    }
+
+  if (!writeTopicFile(topicFilePath, topicObj))
+  {
+    errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to unsubscribe .\n");
+    print_errors(errors);
+    return 1;
+  }
+  return 0;
 }
 
 int update(std::string configPath, const char *topic, int id, const char *command)

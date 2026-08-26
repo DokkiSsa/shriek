@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
+#include <sstream>
 
 #include "shriek.h"
 
@@ -137,6 +138,43 @@ int list(const std::string configPath, const char *topic)
 
 int validate(std::string configPath)
 {
+  std::vector<std::string> errors;
+  const std::vector<std::string> files = getAllFilesInPath(configPath);
+  for (const std::string &file : files)
+  {
+    if (!isValidTopicName(file.c_str()))
+    {
+      errors.push_back("[Error]:" + file + " is not a valid topic name.\n");
+      continue;
+    }
+    const std::string subscription = getOneFileContentFromPath(configPath, file);
+    if (subscription.empty())
+    {
+      errors.push_back("[Error]:" + file + " could not be validated or is empty.\n");
+      continue;
+    }
+    std::istringstream iss(subscription);
+    std::string line;
+    int lineNumber = 0;
+    const Sub *sub = nullptr;
+    while (std::getline(iss, line))
+    {
+      sub = parseSubscription(line);
+      lineNumber++;
+      if (!sub)
+      {
+        errors.push_back("[Error]:" + file + " has an invalid subscription at line: " + std::to_string(lineNumber) + "\n");
+        continue;
+      }
+      delete[] sub->command;
+      delete sub;
+    }
+  }
+  for (const std::string &error : errors)
+  {
+    std::cout << error;
+  }
+  return errors.empty() ? 0 : 1;
 }
 
 int main(int argc, char *argv[])
@@ -192,7 +230,7 @@ int main(int argc, char *argv[])
     return emit(configPath, argv[0], argv[1]);
     break;
   case COM::LIST:
-    return list(configPath, argv[0] ? argv[0] : nullptr);
+    return list(configPath, argc ? argv[0] : nullptr);
     break;
   case COM::VALIDATE:
     return validate(configPath);

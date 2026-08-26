@@ -3,9 +3,11 @@
 #include <sstream>
 #include <cstring>
 #include <cstdlib>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 #include "shriek.hpp"
 
@@ -152,7 +154,6 @@ int spawnCommand(const std::string &command, const std::vector<std::string> &env
   if (pid > 0)
   {
     waitpid(pid, nullptr, 0);
-    std::cout << "finished waiting 1. returning" << std::endl;
     return 0;
   }
   setsid();
@@ -160,14 +161,19 @@ int spawnCommand(const std::string &command, const std::vector<std::string> &env
   if (pid2 < 0)
     _exit(1);
   if (pid2 > 0)
-  {
-    std::cout << "finished waiting 2. returning" << std::endl;
     _exit(0);
-  }
-  // Second child (fully detached daemon process)
-  // Change working directory if needed, close standard file descriptors, etc.
+
   if (chdir("/") != 0)
     _exit(1);
+  umask(0022);
+  const int null_fd = open("/dev/null", O_RDWR);
+  if (null_fd < 0)
+    _exit(1);
+  for (int fd = STDIN_FILENO; fd <= STDERR_FILENO; ++fd)
+    if (dup2(null_fd, fd) < 0)
+      _exit(1);
+  if (null_fd > STDERR_FILENO)
+    close(null_fd);
   std::vector<char *> envp;
   for (const auto &var : envVars)
     envp.push_back(const_cast<char *>(var.c_str()));
@@ -387,6 +393,7 @@ int main(int argc, char *argv[])
     print_help();
     return 1;
   }
+  umask(0077);
   const COM command = findCommand(argv[0]);
   argc--;
   argv++; // skip the command

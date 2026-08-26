@@ -1,7 +1,12 @@
 #include <iostream>
 #include <cstring>
+#include <cstdlib>
 
 #include "shriek.h"
+
+#ifndef VERSION
+#define VERSION "1.0.0"
+#endif
 
 enum class COM
 {
@@ -13,6 +18,17 @@ enum class COM
   LIST = 5,
   VALIDATE = 6,
 };
+
+std::string getConfigPath()
+{
+  char *path;
+  if ((path = std::getenv("XDG_CONFIG_HOME")) ||
+      (path = std::getenv("HOME")))
+  {
+    return std::string(path) + "/shriek";
+  }
+  throw std::runtime_error("Neither XDG_CONFIG_HOME nor HOME environment variables are set.");
+}
 
 const COM findCommand(const char *command)
 {
@@ -56,27 +72,28 @@ const COM findCommand(const char *command)
   }
 }
 
-void print_help() {
-    std::cout << "Usage:\n"
-           << "  shriek subscribe TOPIC COMMAND\n"
-           << "  shriek unsubscribe TOPIC ID\n"
-           << "  shriek update TOPIC ID COMMAND\n"
-           << "  shriek emit TOPIC [MESSAGE]\n"
-           << "  shriek list [TOPIC]\n"
-           << "  shriek validate [TOPIC]\n"
-           << "  shriek --help\n";
-    std::cout << "\n";
-    std::cout << "Silly Usage:\n"
-           << "  shriek when TOPIC COMMAND\n"
-           << "  shriek hush TOPIC ID\n"
-           << "  shriek tune TOPIC ID COMMAND\n"
-           << "  shriek at/about TOPIC [MESSAGE]\n"
-           << "  shriek topics/victims [TOPIC]\n"
-           << "  shriek clear-throat/soundcheck/mictesting123 [TOPIC]\n"
-           << "  shriek --help\n";
+void print_help()
+{
+  std::cout << "Usage: " << VERSION << "\n"
+            << "  shriek subscribe TOPIC COMMAND\n"
+            << "  shriek unsubscribe TOPIC ID\n"
+            << "  shriek update TOPIC ID COMMAND\n"
+            << "  shriek emit TOPIC [MESSAGE]\n"
+            << "  shriek list [TOPIC]\n"
+            << "  shriek validate [TOPIC]\n"
+            << "  shriek --help\n";
+  std::cout << "\n";
+  std::cout << "Silly Usage: " << VERSION << "\n"
+            << "  shriek when TOPIC COMMAND\n"
+            << "  shriek hush TOPIC ID\n"
+            << "  shriek tune TOPIC ID COMMAND\n"
+            << "  shriek at/about TOPIC [MESSAGE]\n"
+            << "  shriek topics/victims [TOPIC]\n"
+            << "  shriek clear-throat/soundcheck/mictesting123 [TOPIC]\n"
+            << "  shriek --help\n";
 }
 
-int main(int argc, char *argv[], char *envp[])
+int main(int argc, char *argv[])
 {
   std::cout << "Shriek! " << VERSION << std::endl;
   argc--;

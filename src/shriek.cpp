@@ -93,96 +93,68 @@ void print_help()
             << "  shriek --help\n";
 }
 
-int subscribe(const char *topic, const char *command)
+int subscribe(std::string configPath, const char *topic, const char *command)
 {
-  if (!isValidTopicName(topic))
+}
+
+int unsubscribe(std::string configPath, const char *topic, int id)
+{
+}
+
+int update(std::string configPath, const char *topic, int id, const char *command)
+{
+}
+
+int emit(std::string configPath, const char *topic, const char *message)
+{
+}
+
+int list(const std::string configPath, const char *topic)
+{
+  if (topic)
   {
-    std::cerr << "Invalid topic name: " << topic << std::endl;
-    return 1;
+    if (!isValidTopicName(topic))
+      return 1;
+    const std::string subscriptions = getOneFileContentFromPath(configPath, topic);
+    if (subscriptions.empty())
+      return 1;
+    std::cout << "Subscriptions for " << topic << ": \n"
+              << subscriptions << std::endl;
   }
-  // Implement subscription logic here
-  std::cout << "Subscribed to topic: " << topic << " with command: " << command << std::endl;
+  else
+  {
+    const std::vector<std::string> files = getAllFilesInPath(configPath);
+    std::cout << "All topics: \n";
+    for (const std::string &file : files)
+    {
+      const int idx = file.find_last_of('/');
+      std::cout << file.substr(idx + 1) << "\n";
+    }
+    std::cout << std::endl;
+  }
   return 0;
 }
 
-int unsubscribe(const char *topic, int id)
+int validate(std::string configPath)
 {
-  if (!isValidTopicName(topic))
-  {
-    std::cerr << "Invalid topic name: " << topic << std::endl;
-    return 1;
-  }
-  if (!isValidId(id))
-  {
-    std::cerr << "Invalid subscription ID: " << id << std::endl;
-    return 1;
-  }
-  // Implement unsubscription logic here
-  std::cout << "Unsubscribed from topic: " << topic << " with ID: " << id << std::endl;
-  return 0;
-}
-
-int update(const char *topic, int id, const char *command)
-{
-  if (!isValidTopicName(topic))
-  {
-    std::cerr << "Invalid topic name: " << topic << std::endl;
-    return 1;
-  }
-  if (!isValidId(id))
-  {
-    std::cerr << "Invalid subscription ID: " << id << std::endl;
-    return 1;
-  }
-  // Implement update logic here
-  std::cout << "Updated subscription for topic: " << topic << " with ID: " << id << " to command: " << command << std::endl;
-  return 0;
-}
-
-int emit(const char *topic, const char *message)
-{
-  if (!isValidTopicName(topic))
-  {
-    std::cerr << "Invalid topic name: " << topic << std::endl;
-    return 1;
-  }
-  // Implement emit logic here
-  std::cout << "Emitted message to topic: " << topic << " with message: " << (message ? message : "(no message)") << std::endl;
-  return 0;
-}
-
-int list(const char *topic)
-{
-  if (topic && !isValidTopicName(topic))
-  {
-    std::cerr << "Invalid topic name: " << topic << std::endl;
-    return 1;
-  }
-  // Implement list logic here
-  std::cout << "Listing subscriptions for topic: " << (topic ? topic : "(all topics)") << std::endl;
-  return 0;
-}
-
-int validate()
-{
-  // Implement validation logic here
-  std::cout << "Validation successful." << std::endl;
-  return 0;
 }
 
 int main(int argc, char *argv[])
 {
-  argc--; argv++; // skip the program name
+  argc--;
+  argv++; // skip the program name
   if (argc < 1)
   {
     print_help();
     return 1;
   }
   const COM command = findCommand(argv[0]);
-  argc--; argv++; // skip the command
+  argc--;
+  argv++; // skip the command
+  std::string configPath = getConfigPath();
   switch (command)
   {
-  
+
   case COM::SUBSCRIBE:
     // Handle subscribe command
     if (argc < 2)
@@ -190,7 +162,7 @@ int main(int argc, char *argv[])
       std::cerr << "Error: subscribe command requires a topic and a command." << std::endl;
       return 1;
     }
-    return subscribe(argv[0], argv[1]);
+    return subscribe(configPath, argv[0], argv[1]);
     break;
   case COM::UNSUBSCRIBE:
     // Handle unsubscribe command
@@ -199,7 +171,7 @@ int main(int argc, char *argv[])
       std::cerr << "Error: unsubscribe command requires a topic and an ID." << std::endl;
       return 1;
     }
-    return unsubscribe(argv[0], std::stoi(argv[1]));
+    return unsubscribe(configPath, argv[0], std::stoi(argv[1]));
     break;
   case COM::UPDATE:
     // Handle update command
@@ -208,7 +180,7 @@ int main(int argc, char *argv[])
       std::cerr << "Error: update command requires a topic, an ID, and a new command." << std::endl;
       return 1;
     }
-    return update(argv[0], std::stoi(argv[1]), argv[2]);
+    return update(configPath, argv[0], std::stoi(argv[1]), argv[2]);
     break;
   case COM::EMIT:
     // Handle emit command
@@ -217,13 +189,13 @@ int main(int argc, char *argv[])
       std::cerr << "Error: emit command requires a topic and a message." << std::endl;
       return 1;
     }
-    return emit(argv[0], argv[1]);
+    return emit(configPath, argv[0], argv[1]);
     break;
   case COM::LIST:
-    return list(argv[0] ? argv[0] : nullptr);
+    return list(configPath, argv[0] ? argv[0] : nullptr);
     break;
   case COM::VALIDATE:
-    return validate();
+    return validate(configPath);
     break;
 
   default:

@@ -99,7 +99,11 @@ bool writeTopicFile(std::string filePath, const Topic *topic)
     return false;
   file.clear();
   for (const auto &sub : topic->subs)
+  {
+    if (sub.id == -1)
+      continue;
     file << sub.id << "\t" << sub.command << "\n";
+  }
   file.close();
   return true;
 }

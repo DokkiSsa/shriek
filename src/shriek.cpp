@@ -80,7 +80,7 @@ void print_help()
             << "  shriek update TOPIC ID COMMAND\n"
             << "  shriek emit TOPIC [MESSAGE]\n"
             << "  shriek list [TOPIC]\n"
-            << "  shriek validate [TOPIC]\n"
+            << "  shriek validate\n"
             << "  shriek --help\n";
   std::cout << "\n";
   std::cout << "Silly Usage: " << VERSION << "\n"
@@ -89,40 +89,141 @@ void print_help()
             << "  shriek tune TOPIC ID COMMAND\n"
             << "  shriek at/about TOPIC [MESSAGE]\n"
             << "  shriek topics/victims [TOPIC]\n"
-            << "  shriek clear-throat/soundcheck/mictesting123 [TOPIC]\n"
+            << "  shriek clear-throat/soundcheck/mictesting123\n"
             << "  shriek --help\n";
+}
+
+int subscribe(const char *topic, const char *command)
+{
+  if (!isValidTopicName(topic))
+  {
+    std::cerr << "Invalid topic name: " << topic << std::endl;
+    return 1;
+  }
+  // Implement subscription logic here
+  std::cout << "Subscribed to topic: " << topic << " with command: " << command << std::endl;
+  return 0;
+}
+
+int unsubscribe(const char *topic, int id)
+{
+  if (!isValidTopicName(topic))
+  {
+    std::cerr << "Invalid topic name: " << topic << std::endl;
+    return 1;
+  }
+  if (!isValidId(id))
+  {
+    std::cerr << "Invalid subscription ID: " << id << std::endl;
+    return 1;
+  }
+  // Implement unsubscription logic here
+  std::cout << "Unsubscribed from topic: " << topic << " with ID: " << id << std::endl;
+  return 0;
+}
+
+int update(const char *topic, int id, const char *command)
+{
+  if (!isValidTopicName(topic))
+  {
+    std::cerr << "Invalid topic name: " << topic << std::endl;
+    return 1;
+  }
+  if (!isValidId(id))
+  {
+    std::cerr << "Invalid subscription ID: " << id << std::endl;
+    return 1;
+  }
+  // Implement update logic here
+  std::cout << "Updated subscription for topic: " << topic << " with ID: " << id << " to command: " << command << std::endl;
+  return 0;
+}
+
+int emit(const char *topic, const char *message)
+{
+  if (!isValidTopicName(topic))
+  {
+    std::cerr << "Invalid topic name: " << topic << std::endl;
+    return 1;
+  }
+  // Implement emit logic here
+  std::cout << "Emitted message to topic: " << topic << " with message: " << (message ? message : "(no message)") << std::endl;
+  return 0;
+}
+
+int list(const char *topic)
+{
+  if (topic && !isValidTopicName(topic))
+  {
+    std::cerr << "Invalid topic name: " << topic << std::endl;
+    return 1;
+  }
+  // Implement list logic here
+  std::cout << "Listing subscriptions for topic: " << (topic ? topic : "(all topics)") << std::endl;
+  return 0;
+}
+
+int validate()
+{
+  // Implement validation logic here
+  std::cout << "Validation successful." << std::endl;
+  return 0;
 }
 
 int main(int argc, char *argv[])
 {
-  std::cout << "Shriek! " << VERSION << std::endl;
-  argc--;
-  argv++; // skip the program name
+  argc--; argv++; // skip the program name
   if (argc < 1)
   {
     print_help();
     return 1;
   }
   const COM command = findCommand(argv[0]);
+  argc--; argv++; // skip the command
   switch (command)
   {
+  
   case COM::SUBSCRIBE:
     // Handle subscribe command
+    if (argc < 2)
+    {
+      std::cerr << "Error: subscribe command requires a topic and a command." << std::endl;
+      return 1;
+    }
+    return subscribe(argv[0], argv[1]);
     break;
   case COM::UNSUBSCRIBE:
     // Handle unsubscribe command
+    if (argc < 2)
+    {
+      std::cerr << "Error: unsubscribe command requires a topic and an ID." << std::endl;
+      return 1;
+    }
+    return unsubscribe(argv[0], std::stoi(argv[1]));
     break;
   case COM::UPDATE:
     // Handle update command
+    if (argc < 3)
+    {
+      std::cerr << "Error: update command requires a topic, an ID, and a new command." << std::endl;
+      return 1;
+    }
+    return update(argv[0], std::stoi(argv[1]), argv[2]);
     break;
   case COM::EMIT:
     // Handle emit command
+    if (argc < 2)
+    {
+      std::cerr << "Error: emit command requires a topic and a message." << std::endl;
+      return 1;
+    }
+    return emit(argv[0], argv[1]);
     break;
   case COM::LIST:
-    // Handle list command
+    return list(argv[0] ? argv[0] : nullptr);
     break;
   case COM::VALIDATE:
-    // Handle validate command
+    return validate();
     break;
 
   default:

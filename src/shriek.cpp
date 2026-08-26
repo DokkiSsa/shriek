@@ -113,7 +113,7 @@ Topic *getUserTopic(std::string configPath, const char *topic)
     print_errors(errors);
     return nullptr;
   }
-  std::string topicFilePath = configPath + "/" + topic;
+  const std::string topicFilePath = configPath + "/" + topic;
   if (!fs::exists(topicFilePath) && !createFile(topicFilePath))
   {
     errors.push_back("[Error]: Could not create file: " + topicFilePath + "\n");
@@ -141,7 +141,7 @@ int subscribe(std::string configPath, const char *topic, const char *command)
     print_errors(errors);
     return 1;
   }
-  std::string topicFilePath = configPath + "/" + topic;
+  const std::string topicFilePath = configPath + "/" + topic;
   int newId = 1;
   for (const auto &sub : topicObj->subs)
     if (newId > sub.id)
@@ -169,15 +169,26 @@ int unsubscribe(std::string configPath, const char *topic, int id)
     print_errors(errors);
     return 1;
   }
-  std::string topicFilePath = configPath + "/" + topic;
+  const std::string topicFilePath = configPath + "/" + topic;
   for (auto &sub : topicObj->subs)
     if (sub.id == id)
     {
       sub.id = -1;
       break;
     }
+  bool deleteCheck = true;
+  for (const auto &sub : topicObj->subs)
+    if (sub.id != -1)
+    {
+      deleteCheck = false;
+      break;
+    }
 
-  if (!writeTopicFile(topicFilePath, topicObj))
+  if (deleteCheck)
+  {
+    deleteFile(topicFilePath);
+  }
+  else if (!writeTopicFile(topicFilePath, topicObj))
   {
     errors.push_back("[Error]: Could not open file (" + topicFilePath + ") to unsubscribe .\n");
     print_errors(errors);
@@ -224,7 +235,7 @@ int list(const std::string configPath, const char *topic)
   {
     if (!isValidTopicName(topic))
       return 1;
-    const std::string subscriptions = getOneFileContentFromPath(configPath, topic);
+    const std::string subscriptions = readFile(configPath + "/" + topic);
     if (subscriptions.empty() || subscriptions == COULD_NOT_OPEN_FILE)
       return 1;
     std::cout << "Subscriptions for " << topic << ": \n"

@@ -38,25 +38,25 @@ shriek --help
 
 Creates a subscription to `TOPIC` with `COMMAND` shell command. it generates a TOPIC file if it does not exist yet.
 
-> silly variant
-> `when`
-> shriek when backup_done 'notify-send "Done"'    
+> silly variant  
+> `when`  
+> shriek when backup_done 'notify-send "Done"'      
 
 ### `unsubscribe`
 
 removes the record identified by `ID` from `TOPIC`. A missing topic or ID is an error. Removing the last subscription deletes the topic file.
 
-> silly variant
-> `hush`
-> shriek hush backup_done 12    
+> silly variant  
+> `hush`  
+> shriek hush backup_done 12      
 
 ### `update`
 
 updates the record command identified by `ID` from `TOPIC`. A missing topic or ID is an error. it keeps the same `ID`.
 
-> silly variant
-> `retune`
-> shriek retune backup_done 12 'notify-send "Backup complete"'
+> silly variant  
+> `retune`  
+> shriek retune backup_done 12 'notify-send "Backup complete"'  
 
 ### `emit`
 
@@ -64,33 +64,33 @@ updates the record command identified by `ID` from `TOPIC`. A missing topic or I
 
 `MESSAGE` is the optional text message that is sent to each of its subscribers. it is set as an environment variable `SHRIEK_MESSAGE`.
 
-> silly variant
-> `at`/`about`
-> shriek at backup_done 'success'
-> shriek about backup_done 'success'
+> silly variant  
+> `at`/`about`  
+> shriek at backup_done 'success'  
+> shriek about backup_done 'success'  
 
 ### `list`
 
 it lists the topics available. if a `TOPIC` param is given, it list the subscribers to that topic
 
-> silly variant
-> variation exist if optional TOPIC param is sent, for the fun of it
-> functionally it remains the same
-> `topics`/`victims`
-> shriek topics
-> shriek topics backup_done
-> shriek victims
-> shriek victims backup_done
+> silly variant  
+> variation exist if optional TOPIC param is sent, for the fun of it  
+> functionally it remains the same  
+> `topics`/`victims`  
+> shriek topics  
+> shriek topics backup_done    
+> shriek victims  
+> shriek victims backup_done  
 
 ### `validate`
 
 checks all the topic files validity, and reports broken file.
 
-> silly variant
-> `clear-throat`/`soundcheck`/`mictesting123`
-> shriek clear-throat
-> shriek soundcheck
-> shriek mictesting123
+> silly variant  
+> `clear-throat`/`soundcheck`/`mictesting123`  
+> shriek clear-throat  
+> shriek soundcheck  
+> shriek mictesting123  
 
 ## Config
 

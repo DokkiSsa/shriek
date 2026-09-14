@@ -25,10 +25,5 @@ $(BUILD_DIR)/shriek.o: src/shriek.cpp src/shriek.hpp | $(BUILD_DIR)
 $(BUILD_DIR):
 	mkdir -p $@
 
-install: $(SHRIEK)
-	install -d $(DESTDIR)$(BINDIR) $(DESTDIR)$(DOCDIR)
-	install -m 755 $(SHRIEK) $(DESTDIR)$(BINDIR)/shriek
-	install -m 644 README LICENSE docs/design-specification.md $(DESTDIR)$(DOCDIR)
-
 clean:
 	rm -rf $(BUILD_DIR)

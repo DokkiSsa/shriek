@@ -116,7 +116,7 @@ Topic *getUserTopic(std::string configPath, const char *topic)
     return nullptr;
   }
   Topic *topicObj = parseTopicFromFile(configPath, topic, errors);
-  if (!topic)
+  if (!topicObj)
   {
     print_errors(errors);
     return nullptr;
@@ -298,9 +298,22 @@ int emit(std::string configPath, const char *topic, const char *message)
     return 1;
   const std::string topicFilePath = configPath + "/" + topic;
   const char *depthenv = std::getenv("SHRIEK_DEPTH");
-  if (!depthenv)
-    depthenv = "0";
-  const int depth = std::stoi(depthenv) + 1;
+  int depth = 1;
+  try
+  {
+    if (!depthenv || (depth = std::stoi(depthenv) + 1))
+      ;
+  }
+  catch (const std::exception &e)
+  {
+    depth = 1;
+  }
+  if (depth > 16)
+  {
+    errors.push_back("[Error]: Max depth reached on topic (" + std::string(topic) + ") to emit.");
+    print_errors(errors);
+    return 1;
+  }
   for (const auto &sub : topicObj->subs)
   {
     std::vector<std::string> envs = {
